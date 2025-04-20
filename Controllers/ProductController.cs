@@ -18,58 +18,78 @@ public class ProductController : ControllerBase
     [HttpGet]
     public IActionResult GetAll()
     {
-        var products = new List<Product>();
-
-        using (SqlConnection connection = new SqlConnection(_connectionString))
+        try
         {
-            string query = "Select Id, Name, Price, Stock From Products";
-            SqlCommand command = new SqlCommand(query, connection);
-            connection.Open();
+            var products = new List<Product>();
 
-            SqlDataReader reader = command.ExecuteReader();
-
-            while (reader.Read())
+            using (SqlConnection connection = new SqlConnection(_connectionString))
             {
-                products.Add(new Product
+                string query = "Select Id, Name, Price, Stock From Products";
+                SqlCommand command = new SqlCommand(query, connection);
+                connection.Open();
+
+                using (SqlDataReader reader = command.ExecuteReader())
                 {
-                    Id = reader.GetInt32(0),
-                    Name = reader.GetString(1),
-                    Price = reader.GetDecimal(2),
-                    Stock = reader.GetInt32(3)
-                });
+                    while (reader.Read())
+                    {
+                        products.Add(new Product
+                        {
+                            Id = reader.GetInt32(0),
+                            Name = reader.GetString(1),
+                            Price = reader.GetDecimal(2),
+                            Stock = reader.GetInt32(3)
+                        });
+                    }
+                }
             }
 
-            connection.Close();
+            return Ok(products);
         }
-
-        return Ok(products);
+        catch (Exception ex)
+        {
+            return BadRequest($"Hata: {ex.Message}");
+        }
     }
 
     [HttpGet("{id}")]
     public IActionResult GetById(int id)
     {
-        var products = new List<Product>();
-        using (SqlConnection connection = new SqlConnection(_connectionString))
+        try
         {
-            string query = "Select Id, Name, Price, Stock From Products Where Id = @Id";
-            SqlCommand command = new SqlCommand(query, connection);
-            command.Parameters.AddWithValue("@Id", id);
-            connection.Open();
-
-            SqlDataReader reader = command.ExecuteReader();
-            while (reader.Read())
+            Product product = null;
+            using (SqlConnection connection = new SqlConnection(_connectionString))
             {
-                products.Add(new Product
+                string query = "Select Id, Name, Price, Stock From Products Where Id = @Id";
+                SqlCommand command = new SqlCommand(query, connection);
+                command.Parameters.AddWithValue("@Id", id);
+                connection.Open();
+
+                using (SqlDataReader reader = command.ExecuteReader())
                 {
-                    Id = reader.GetInt32(0),
-                    Name = reader.GetString(1),
-                    Price = reader.GetDecimal(2),
-                    Stock = reader.GetInt32(3)
-                });
+                    if (reader.Read())
+                    {
+                        product = new Product
+                        {
+                            Id = reader.GetInt32(0),
+                            Name = reader.GetString(1),
+                            Price = reader.GetDecimal(2),
+                            Stock = reader.GetInt32(3)
+                        };
+                    }
+                }
             }
-            connection.Close();
+
+            if (product == null)
+            {
+                return NotFound($"Id {id} ile ürün bulunamadı.");
+            }
+
+            return Ok(product);
         }
-        return Ok(products);
+        catch (Exception ex)
+        {
+            return BadRequest($"Hata: {ex.Message}");
+        }
     }
 
     [HttpPost]
